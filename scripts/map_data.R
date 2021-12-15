@@ -10,8 +10,6 @@ library(leaflet)
 pc <- vroom::vroom("data/pc2018_coords.csv") %>% 
   filter(LEVEL1 == "PC")
 
-pc_sp <- pc %>% filter(!is.na(LATITUDE) | LATITUDE != 0) %>% 
-  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = st_crs(county))
 
 
 county <- read_sf("data/coloradoCounties.geojson")
@@ -20,9 +18,14 @@ county_refined <- county %>% filter(NAME %in% c("Larimer", "Weld", "Denver", "Mo
                                                 "Alamosa"))
 
 
-# filter out points not in desired counties
+pc_sp <- pc %>% filter(!is.na(LATITUDE) | LATITUDE != 0) %>% 
+  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = st_crs(county))
 
-pc_filtered <- st_intersection(pc_sp, county_refined)
+
+# filter out points not in desired counties and jitter
+
+pc_filtered <- st_intersection(pc_sp, county_refined) %>% 
+  st_jitter()
 
 # investigate
 leaflet() %>% 
@@ -57,12 +60,53 @@ leaflet() %>%
 
 
 
-# color by total revenue
+# color by total revenue (calculated, TOTREV)
+
+pal_group <- colorFactor(palette = "Set1", domain = pc_filtered$NTMAJ10)
+labels_group <- c("Arts, Culture, and Humanities", "Education", "Environment",
+                  "Health", "Human Services", "International", "Mutual Benefit",
+                  "Public and Societal Benefit", "Religion", "Unknown")
+
+leaflet() %>% 
+  addTiles() %>% 
+  #addPolygons(data = county, color = "black", fillOpacity = 0, stroke = 0.1, popup = paste("County:", county$NAME)) %>% 
+  addPolygons(data = county_refined, col = "black", fillOpacity = 0, opacity = 0.9,
+              popup = paste("County:", county_refined$NAME)) %>% 
+  addCircleMarkers(data = pc_filtered, radius = 2, opacity = 1,
+                   color = ~pal_group(NTMAJ10),
+                   popup = paste("Name:", pc$NAME, "<br>",
+                                 "Address:", pc$full_address)) %>% 
+  addLegend(pal = pal_group, values = pc_filtered$NTMAJ10, opacity = 0.9,
+            labFormat = function(type, cuts, p) {  # Here's the trick
+              paste0(labels_group)
+            })
+
+
+
+# color by total donations/contributions (CONT)
+pal_cont <- colorBin(palette = "RdYlBu", reverse = TRUE, domain = pc_filtered$CONT, 
+                     bins = c(0, 100000, 200000, 300000, 400000, 500000, 200000000)
+                     )
+
+leaflet() %>% 
+  addTiles() %>% 
+  #addPolygons(data = county, color = "black", fillOpacity = 0, stroke = 0.1, popup = paste("County:", county$NAME)) %>% 
+  addPolygons(data = county_refined, col = "black", fillOpacity = 0, opacity = 0.9
+              #popup = paste("County:", county_refined$NAME)
+              ) %>% 
+  addCircleMarkers(data = pc_filtered, radius = 2, opacity = 1,
+                   color = ~pal_cont(CONT),
+                   popup = paste("Name:", pc_filtered$NAME, "<br>",
+                                 "Address:", pc_filtered$full_address, "<br>",
+                                 "Annual Contributions:", paste0("$", pc_filtered$CONT))) %>% 
+  addLegend(pal = pal_cont, values = pc_filtered$CONT, opacity = 0.9)
+
+
+# color by total expenses (EXPS)
 
 
 
 
-# color by total donations
 
 
 

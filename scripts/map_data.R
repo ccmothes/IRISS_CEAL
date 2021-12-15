@@ -25,7 +25,7 @@ pc_sp <- pc %>% filter(!is.na(LATITUDE) | LATITUDE != 0) %>%
 # filter out points not in desired counties and jitter
 
 pc_filtered <- st_intersection(pc_sp, county_refined) %>% 
-  st_jitter()
+  st_jitter(amount = 0.0001, factor = 0.001) # I think default value is fine, just know addresses are off by a couple streets
 
 # investigate
 leaflet() %>% 
@@ -51,8 +51,9 @@ leaflet() %>%
               popup = paste("County:", county_refined$NAME)) %>% 
   addCircleMarkers(data = pc_filtered, radius = 2, opacity = 1,
                    color = ~pal_group(NTMAJ10),
-                   popup = paste("Name:", pc$NAME, "<br>",
-                                 "Address:", pc$full_address)) %>% 
+                   popup = paste("Name:", pc_filtered$NAME, "<br>",
+                                 "Address:", pc_filtered$full_address, "<br>",
+                                 "Major Group:", pc_filtered$NTMAJ10)) %>% 
   addLegend(pal = pal_group, values = pc_filtered$NTMAJ10, opacity = 0.9,
             labFormat = function(type, cuts, p) {  # Here's the trick
               paste0(labels_group)
@@ -62,10 +63,7 @@ leaflet() %>%
 
 # color by total revenue (calculated, TOTREV)
 
-pal_group <- colorFactor(palette = "Set1", domain = pc_filtered$NTMAJ10)
-labels_group <- c("Arts, Culture, and Humanities", "Education", "Environment",
-                  "Health", "Human Services", "International", "Mutual Benefit",
-                  "Public and Societal Benefit", "Religion", "Unknown")
+pal_rev <- colorQuantile(palette = "RdYlBu", reverse = TRUE,domain = pc_filtered$TOTREV, n = 20)
 
 leaflet() %>% 
   addTiles() %>% 
@@ -73,13 +71,11 @@ leaflet() %>%
   addPolygons(data = county_refined, col = "black", fillOpacity = 0, opacity = 0.9,
               popup = paste("County:", county_refined$NAME)) %>% 
   addCircleMarkers(data = pc_filtered, radius = 2, opacity = 1,
-                   color = ~pal_group(NTMAJ10),
-                   popup = paste("Name:", pc$NAME, "<br>",
-                                 "Address:", pc$full_address)) %>% 
-  addLegend(pal = pal_group, values = pc_filtered$NTMAJ10, opacity = 0.9,
-            labFormat = function(type, cuts, p) {  # Here's the trick
-              paste0(labels_group)
-            })
+                   color = ~pal_rev(TOTREV),
+                   popup = paste("Name:", pc_filtered$NAME, "<br>",
+                                 "Address:", pc_filtered$full_address, "<br>",
+                                 "Annual Revenue:", paste0("$",pc_filtered$TOTREV))) %>% 
+  addLegend(pal = pal_rev, values = pc_filtered$TOTREV, opacity = 0.9)
 
 
 
@@ -87,6 +83,9 @@ leaflet() %>%
 pal_cont <- colorBin(palette = "RdYlBu", reverse = TRUE, domain = pc_filtered$CONT, 
                      bins = c(0, 100000, 200000, 300000, 400000, 500000, 200000000)
                      )
+# pal_cont <- colorQuantile(palette = "RdYlBu", reverse = TRUE, domain = pc_filtered$CONT, 
+#                      n = 20)
+
 
 leaflet() %>% 
   addTiles() %>% 
@@ -105,6 +104,23 @@ leaflet() %>%
 # color by total expenses (EXPS)
 
 
+pal_exp <- colorQuantile(palette = "RdYlBu", reverse = TRUE, domain = pc_filtered$EXPS, n = 10)
+
+leaflet() %>% 
+  addTiles() %>% 
+  #addPolygons(data = county, color = "black", fillOpacity = 0, stroke = 0.1, popup = paste("County:", county$NAME)) %>% 
+  addPolygons(data = county_refined, col = "black", fillOpacity = 0, opacity = 0.9,
+              popup = paste("County:", county_refined$NAME)) %>% 
+  addCircleMarkers(data = pc_filtered, radius = 6, opacity = 1,
+                   color = "black",
+                   stroke = TRUE,
+                   weight = 0.5,
+                   fillOpacity = 1,
+                   fillColor = ~pal_exp(EXPS),
+                   popup = paste("Name:", pc_filtered$NAME, "<br>",
+                                 "Address:", pc_filtered$full_address, "<br>",
+                                 "2018 Expenses:", paste0("$",pc_filtered$EXPS))) %>% 
+  addLegend(pal = pal_exp, values = pc_filtered$EXPS, opacity = 0.9)
 
 
 

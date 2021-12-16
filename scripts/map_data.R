@@ -17,6 +17,8 @@ county <- read_sf("data/coloradoCounties.geojson")
 county_refined <- county %>% filter(NAME %in% c("Larimer", "Weld", "Denver", "Morgan", "Pueblo",
                                                 "Alamosa"))
 
+saveRDS(county_refined, "data/county_refined.RDS")
+
 
 pc_sp <- pc %>% filter(!is.na(LATITUDE) | LATITUDE != 0) %>% 
   st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = st_crs(county))
@@ -26,6 +28,9 @@ pc_sp <- pc %>% filter(!is.na(LATITUDE) | LATITUDE != 0) %>%
 
 pc_filtered <- st_intersection(pc_sp, county_refined) %>% 
   st_jitter(amount = 0.0005, factor = 0.001) # I think default value is fine, just know addresses are off by a couple streets
+
+
+saveRDS(pc_filtered, "data/pc_filtered.RDS")
 
 # investigate
 leaflet() %>% 
